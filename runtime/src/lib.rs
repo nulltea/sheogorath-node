@@ -41,7 +41,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
-pub use pallet_template;
+pub use nft_pallet;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -273,7 +273,7 @@ impl pallet_sudo::Config for Runtime {
 }
 
 /// Configure the pallet-template in pallets/template.
-impl pallet_template::Config for Runtime {
+impl nft_pallet::Config for Runtime {
 	type Event = Event;
 }
 
@@ -293,7 +293,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
+		NFT: nft_pallet::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
