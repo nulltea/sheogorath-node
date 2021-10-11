@@ -1,6 +1,6 @@
 [package]
 name = 'nft-pallet'
-version = '3.0.0-monthly-2021-10'
+version = '0.0.1'
 description = 'FRAME pallet template for defining custom runtime logic.'
 authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
 homepage = 'https://substrate.dev'
@@ -10,71 +10,37 @@ publish = false
 repository = 'https://github.com/timoth-y/substrate-nft'
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
-[dependencies.codec]
-default-features = false
-features = ['derive']
-package = 'parity-scale-codec'
-version = '2.0.0'
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = [
+	"derive",
+] }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+frame-support = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/frame/support" }
+frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/frame/system" }
+frame-benchmarking = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/frame/benchmarking", optional = true }
+sp-std = { version = "4.0.0-dev", default-features = false, path = "../../../substrate-ipfs/primitives/std" }
 
-[dependencies.frame-benchmarking]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-optional = true
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
+[dev-dependencies]
+frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/frame/system" }
+sp-core = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/primitives/core" }
+sp-io = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/primitives/io" }
+sp-runtime = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/primitives/runtime" }
 
-[dependencies.frame-support]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.frame-system]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.scale-info]
-default-features = false
-features = ['derive']
-version = '1.0'
-
-[dev-dependencies.sp-core]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dev-dependencies.sp-io]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dev-dependencies.sp-runtime]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-std]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
 
 [features]
 default = ['std']
-runtime-benchmarks = ['frame-benchmarking']
 std = [
-    'codec/std',
-    'scale-info/std',
-    'frame-support/std',
-    'frame-system/std',
-    'frame-benchmarking/std',
+	'codec/std',
+	'scale-info/std',
+	'frame-support/std',
+	'frame-system/std',
+	'frame-benchmarking/std',
+	'frame-system/std',
+	'sp-io/std',
 	'sp-std/std',
 ]
-try-runtime = ['frame-support/try-runtime']
+
+runtime-benchmarks = ["frame-benchmarking"]
+try-runtime = ["frame-support/try-runtime"]

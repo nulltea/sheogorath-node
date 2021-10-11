@@ -1,172 +1,65 @@
 [package]
-name = 'node-template'
-version = '3.0.0-monthly-2021-10'
-description = 'A fresh FRAME-based Substrate node, ready for hacking.'
-authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
-homepage = 'https://substrate.dev'
-edition = '2018'
-license = 'Unlicense'
+name = "node-template"
+version = "3.0.0"
+authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
+description = "A fresh FRAME-based Substrate node, ready for hacking."
+edition = "2018"
+license = "Unlicense"
+build = "build.rs"
+homepage = "https://substrate.dev"
+repository = "https://github.com/substrate-developer-hub/substrate-node-template/"
 publish = false
-repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
-build = 'build.rs'
-
-[[bin]]
-name = 'node-template'
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
-[build-dependencies.substrate-build-script-utils]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '3.0.0'
-
-[dependencies.node-template-runtime]
-path = '../runtime'
-version = '3.0.0-monthly-2021-10'
+[[bin]]
+name = "node-template"
 
 [dependencies]
-jsonrpc-core = '18.0.0'
-structopt = '0.3.8'
+ipfs = { git = "https://github.com/rs-ipfs/rust-ipfs"}
+structopt = "0.3.8"
 
-[dependencies.frame-benchmarking]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
+sc-cli = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/cli", features = ["wasmtime"] }
+sp-core = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/core" }
+sc-executor = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/executor", features = ["wasmtime"] }
+sc-service = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/service", features = ["wasmtime"] }
+sc-telemetry = { version = "4.0.0-dev", path = "../../substrate-ipfs/client/telemetry" }
+sc-keystore = { version = "4.0.0-dev", path = "../../substrate-ipfs/client/keystore" }
+sc-transaction-pool = { version = "4.0.0-dev", path = "../../substrate-ipfs/client/transaction-pool" }
+sc-transaction-pool-api = { version = "4.0.0-dev", path = "../../substrate-ipfs/client/transaction-pool/api" }
+sc-consensus-aura = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/consensus/aura" }
+sp-consensus-aura = { version = "0.10.0-dev", path = "../../substrate-ipfs/primitives/consensus/aura" }
+sp-consensus = { version = "0.10.0-dev", path = "../../substrate-ipfs/primitives/consensus/common" }
+sc-consensus = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/consensus/common" }
+sc-finality-grandpa = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/finality-grandpa" }
+sp-finality-grandpa = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/finality-grandpa" }
+sc-client-api = { version = "4.0.0-dev", path = "../../substrate-ipfs/client/api" }
+sp-runtime = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/runtime" }
+sp-timestamp = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/timestamp" }
 
-[dependencies.frame-benchmarking-cli]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
+# These dependencies are used for the node template's RPCs
+jsonrpc-core = "18.0.0"
+sc-rpc = { version = "4.0.0-dev", path = "../../substrate-ipfs/client/rpc" }
+sp-api = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/api" }
+sc-rpc-api = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/rpc-api" }
+sp-blockchain = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/blockchain" }
+sp-block-builder = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/block-builder" }
+sc-basic-authorship = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/basic-authorship" }
+substrate-frame-rpc-system = { version = "4.0.0-dev", path = "../../substrate-ipfs/utils/frame/rpc/system" }
+pallet-transaction-payment-rpc = { version = "4.0.0-dev", path = "../../substrate-ipfs/frame/transaction-payment/rpc/" }
 
-[dependencies.pallet-transaction-payment-rpc]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
+# These dependencies are used for runtime benchmarking
+frame-benchmarking = { version = "4.0.0-dev", path = "../../substrate-ipfs/frame/benchmarking" }
+frame-benchmarking-cli = { version = "4.0.0-dev", path = "../../substrate-ipfs/utils/frame/benchmarking-cli" }
 
-[dependencies.sc-basic-authorship]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
+node-template-runtime = { version = "3.0.0", path = "../runtime" }
 
-[dependencies.sc-cli]
-features = ['wasmtime']
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sc-client-api]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sc-consensus]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sc-consensus-aura]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sc-executor]
-features = ['wasmtime']
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sc-finality-grandpa]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sc-keystore]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sc-rpc]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sc-rpc-api]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sc-service]
-features = ['wasmtime']
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sc-telemetry]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sc-transaction-pool]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sc-transaction-pool-api]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-api]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-block-builder]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-blockchain]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-consensus]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sp-consensus-aura]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '0.10.0-dev'
-
-[dependencies.sp-core]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-finality-grandpa]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-runtime]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.sp-timestamp]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
-
-[dependencies.substrate-frame-rpc-system]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-10'
-version = '4.0.0-dev'
+[build-dependencies]
+substrate-build-script-utils = { version = "3.0.0", path = "../../substrate-ipfs/utils/build-script-utils" }
 
 [features]
 default = []
-runtime-benchmarks = ['node-template-runtime/runtime-benchmarks']
+runtime-benchmarks = [
+	"node-template-runtime/runtime-benchmarks",
+]

@@ -1,12 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use pallet::*;
+pub use nft::*;
 
 #[frame_support::pallet]
-pub mod pallet {
+pub mod nft {
 	use frame_support::{pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
-	use sp_std::vec::Vec;
+	//use sp_std::vec::Vec;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -27,7 +27,7 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(T);
+	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
 	pub(super) type Collection<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, f64, ValueQuery>;
@@ -53,19 +53,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn mint(origin: OriginFor<T>, data: Vec<u8>) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-
-			let new_value = match Collection::<T>::try_get(&sender) {
-				Ok(current) => current + value,
-				Err(_) => value,
-			};
-
-			Collection::<T>::insert(&sender, new_value);
-
-			Self::deposit_event(Event::ValueChanged(sender, new_value));
-
-			Ok(())
-		}
+		// #[pallet::weight(10_000)]
+		// pub fn mint(origin: OriginFor<T>, data: Vec<u8>) -> DispatchResult {
+		// 	let sender = ensure_signed(origin)?;
+		//
+		// 	Ok(())
+		// }
 	}
 }
