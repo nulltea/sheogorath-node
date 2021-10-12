@@ -17,7 +17,7 @@ pub mod nft {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event emitted when a Account balance changed. [who, value]
-		BalanceChanged(T::AccountId, f64),
+		BalanceChanged(T::AccountId, u64),
 	}
 
 	#[pallet::error]
@@ -30,7 +30,7 @@ pub mod nft {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type Collection<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, f64, ValueQuery>;
+	pub(super) type Collection<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, u64, ValueQuery>;
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
@@ -38,7 +38,7 @@ pub mod nft {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(1_000)]
-		pub fn credit_value(origin: OriginFor<T>, value: f64) -> DispatchResult {
+		pub fn credit_value(origin: OriginFor<T>, value: u64) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			let new_value = match Collection::<T>::try_get(&sender) {
@@ -46,8 +46,7 @@ pub mod nft {
 				Err(_) => value,
 			};
 
-			Collection::<T>::insert(&sender, new_value);
-
+			Collection::<T>::insert(&sender, new_value.clone());
 			Self::deposit_event(Event::BalanceChanged(sender, new_value));
 
 			Ok(())

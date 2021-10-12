@@ -46,7 +46,6 @@ pub fn new_partial(
 				FullBackend,
 				Block,
 				FullClient,
-				FullClient,
 				FullSelectChain,
 			>,
 			sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
