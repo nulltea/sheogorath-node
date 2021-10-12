@@ -6,7 +6,7 @@ pub use nft::*;
 pub mod nft {
 	use frame_support::{pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
-	//use sp_std::vec::Vec;
+	use sp_std::{str, vec::Vec};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
