@@ -31,13 +31,15 @@ pub mod ipfs {
 		FindProvidersIssued(T::AccountId),
 	}
 
-	#[derive(Encode, Decode, TypeInfo, PartialEq)]
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
 	pub enum ConnectionCommand {
 		ConnectTo(OpaqueMultiaddr),
 		DisconnectFrom(OpaqueMultiaddr),
 	}
 
-	#[derive(Encode, Decode, TypeInfo, PartialEq)]
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
 	pub enum DataCommand {
 		AddBytes(Vec<u8>),
 		CatBytes(Vec<u8>),
@@ -46,7 +48,8 @@ pub mod ipfs {
 		RemovePin(Vec<u8>),
 	}
 
-	#[derive(Encode, Decode, TypeInfo, PartialEq)]
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
 	pub enum DhtCommand {
 		FindPeer(Vec<u8>),
 		GetProviders(Vec<u8>),
@@ -54,7 +57,7 @@ pub mod ipfs {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		CantCreateRequest,
+		RequestCreateFained,
 		RequestTimeout,
 		RequestFailed,
 	}
