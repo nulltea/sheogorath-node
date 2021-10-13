@@ -13,7 +13,7 @@ use sp_std::vec::Vec;
 /// and assets with different IDs **must not** have equivalent attributes.
 pub trait UniqueAssets<AccountId> {
 	/// The type used to identify unique assets.
-	type AssetID;
+	type AssetId;
 	/// The attributes that distinguish unique assets.
 	type AssetInfo;
 	/// The maximum number of this type of asset that may exist (minted - burned).
@@ -28,17 +28,17 @@ pub trait UniqueAssets<AccountId> {
 	/// The total number of this type of asset owned by an account.
 	fn total_for_account(account: &AccountId) -> u64;
 	/// The set of unique assets owned by an account.
-	fn assets_for_account(account: &AccountId) -> Vec<(Self::AssetID, Self::AssetInfo)>;
+	fn assets_for_account(account: &AccountId) -> Vec<(Self::AssetId, Self::AssetInfo)>;
 	/// The ID of the account that owns an asset.
-	fn owner_of(asset_id: &Self::AssetID) -> AccountId;
+	fn owner_of(asset_id: &Self::AssetId) -> AccountId;
 
 	/// Use the provided asset info to create a new unique asset for the specified user.
 	fn mint(
 		owner_account: &AccountId,
 		asset_info: Self::AssetInfo,
-	) -> Result<Self::AssetID, DispatchError>;
+	) -> Result<Self::AssetId, DispatchError>;
 	/// Destroy an asset.
-	fn burn(asset_id: &Self::AssetID) -> DispatchResult;
+	fn burn(asset_id: &Self::AssetId) -> DispatchResult;
 	/// Transfer ownership of an asset to another account.
-	fn transfer(dest_account: &AccountId, asset_id: &Self::AssetID) -> DispatchResult;
+	fn transfer(dest_account: &AccountId, asset_id: &Self::AssetId) -> DispatchResult;
 }

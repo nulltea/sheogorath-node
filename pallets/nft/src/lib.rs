@@ -16,15 +16,16 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_std::{str, vec::Vec, fmt::Debug};
+	use crate::nft::UniqueAssets;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The dispatch origin that is able to mint new instances of this type of commodity.
-		type Curator: EnsureOrigin<Self::Origin>;
+		type AssetsCurator: EnsureOrigin<Self::Origin>;
 		/// The data type that is used to describe this type of commodity.
-		type Metadata: Hashable + Member + Debug + Default + FullCodec + Ord;
+		type AssetMetadata: Hashable + Member + Debug + Default + FullCodec + Ord;
 		/// The maximum number of this type of commodity that may exist (minted - burned).
 		type AssetLimit: Get<u128>;
 		/// The maximum number of this type of commodity that any single account may own.
@@ -40,8 +41,12 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event emitted when a Account value changed. [who, value]
-		ValueChanged(T::AccountId, u64),
+		/// The asset has been burned.
+		Burned(AssetId<T>),
+		/// The asset has been minted and distributed to the account.
+		Minted(AssetId<T>, T::AccountId),
+		/// Ownership of the asset has been transferred to the account.
+		Transferred(AssetId<T>, T::AccountId),
 	}
 
 	#[pallet::error]
@@ -53,37 +58,80 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	#[pallet::storage]
 	/// The total number of this type of commodity that exists (minted - burned).
+	#[pallet::storage]
+	#[pallet::getter(fn total)]
 	pub(super) type Total<T: Config> = StorageValue<_, u128, ValueQuery>;
-	/// The total number of this type of commodity that has been burned
+	/// The total number of this type of commodity that has been burned.
+	#[pallet::storage]
+	#[pallet::getter(fn burned)]
 	pub(super) type Burned<T: Config> = StorageValue<_, u128, ValueQuery>;
 	/// The total number of this type of commodity owned by an account.
-	pub(super) type TotalForAccount<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, u64, ValueQuery>;
+	#[pallet::storage]
+	#[pallet::getter(fn total_by_account)]
+	pub(super) type TotalByAccount<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, u64, ValueQuery>;
 	/// A mapping from an account to a list of all of the commodities of this type that are owned by it.
-	pub(super) type AssetForAccount<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Asset<T, I>>, ValueQuery>;
+	#[pallet::storage]
+	#[pallet::getter(fn assets_by_account)]
+	pub(super) type AssetsByAccount<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Asset<T, I>>, ValueQuery>;
 	/// A mapping from a commodity ID to the account that owns it.
-	pub(super) type AccountForAsset<T: Config> = StorageMap<_, Blake2_128Concat, AssetId<T>, T::AccountId, ValueQuery>;
+	#[pallet::storage]
+	#[pallet::getter(fn account_by_asset_id)]
+	pub(super) type AccountByAsset<T: Config> = StorageMap<_, Blake2_128Concat, AssetId<T>, T::AccountId, ValueQuery>;
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(1_000)]
-		pub fn credit_value(origin: OriginFor<T>, value: u64) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+		#[pallet::weight(10_000)]
+		pub fn mint(origin: OriginFor<T>, owner_account: T::AccountId, metadata: T::AssetMetadata) -> DispatchResult {
+			T::AssetsCurator::ensure_origin(origin)?;
 
-			let new_value = match Collection::<T>::try_get(&sender) {
-				Ok(current) => current + value,
-				Err(_) => value,
-			};
+			let id = <Self as UniqueAssets<T::AccountId>>::mint(&owner_account, metadata)?;
 
-			Collection::<T>::insert(&sender, new_value);
-
-			Self::deposit_event(Event::ValueChanged(sender, new_value));
+			Self::deposit_event(Event::Minted(id, owner_account));
 
 			Ok(())
+		}
+	}
+
+	impl<T: Config> UniqueAssets<T::AccountId> for Pallet<T> {
+		type AssetId = AssetId<T>;
+		type AssetInfo = T::AssetMetadata;
+		type AssetLimit = T::AssetLimit;
+		type UserAssetLimit = T::UserAssetLimit;
+
+		fn total() -> u128 {
+			Self::total()
+		}
+
+		fn burned() -> u128 {
+			Self::burned()
+		}
+
+		fn total_for_account(account: &frame_system::pallet::AccountId) -> u64 {
+			Self::total_by_account(account)
+		}
+
+		fn assets_for_account(account: &frame_system::pallet::AccountId) -> Vec<(Self::AssetID, Self::AssetInfo)> {
+			Self::total_by_account(account)
+		}
+
+		fn owner_of(asset_id: &Self::AssetID) -> frame_system::pallet::AccountId {
+			Self::account_by_asset_id(asset_id)
+		}
+
+		fn mint(owner_account: &frame_system::pallet::AccountId, asset_info: Self::AssetInfo) -> Result<Self::AssetID, DispatchError> {
+			todo!()
+		}
+
+		fn burn(asset_id: &Self::AssetID) -> DispatchResult {
+			todo!()
+		}
+
+		fn transfer(dest_account: &frame_system::pallet::AccountId, asset_id: &Self::AssetID) -> DispatchResult {
+			todo!()
 		}
 	}
 }
