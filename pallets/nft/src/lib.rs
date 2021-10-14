@@ -10,27 +10,30 @@ pub mod pallet {
 
 	use codec::FullCodec;
 	use frame_support::{
-		dispatch::{DispatchResult, DispatchResultWithPostInfo},
+		dispatch::{DispatchResult},
 		pallet_prelude::*,
-		sp_runtime::traits::{Hash, Zero},
-		traits::{Currency, ExistenceRequirement, Randomness},
+		sp_runtime::traits::Hash,
+		traits::{Currency},
 		Hashable,
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
-	use sp_std::{fmt::Debug, str, vec::Vec};
+	use sp_std::{fmt::Debug, str, vec::Vec, collections::btree_map::BTreeMap};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The dispatch origin that is able to mint new instances of this type of commodity.
 		type AssetsCurator: EnsureOrigin<Self::Origin>;
 		/// The data type that is used to describe this type of commodity.
-		type AssetMetadata: Hashable + Debug + Member + TypeInfo + Default + FullCodec + Ord;
+		type AssetMetadata: Clone + Hashable + Debug + PartialEq + TypeInfo + FullCodec;
 		/// The maximum number of this type of commodity that may exist (minted - burned).
 		type AssetLimit: Get<u128>;
 		/// The maximum number of this type of commodity that any single account may own.
 		type UserAssetLimit: Get<u64>;
+		/// ...
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// The Currency handler for the Kitties pallet.
+		type Currency: Currency<Self::AccountId>;
 	}
 
 	/// The runtime system's hashing algorithm is used to uniquely identify commodities.
@@ -38,6 +41,17 @@ pub mod pallet {
 
 	/// Associates a commodity with its ID.
 	pub type Asset<T> = (AssetId<T>, <T as Config>::AssetMetadata);
+
+	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
+	pub struct AssetMetadata<T: Config> {
+		pub name: Vec<u8>,
+		pub content_uri: Vec<u8>,
+		pub properties: BTreeMap<Vec<u8>, Vec<u8>>,
+		pub initial_price: Option<BalanceOf<T>>,
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -115,7 +129,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			ensure!(
 				sender == Self::account_by_asset_id(&asset_id),
-				Error::<T>::AssetNotOwnedByAccount
+				<Error<T>>::AssetNotOwnedByAccount
 			);
 
 			<Self as UniqueAssets<T::AccountId>>::burn(&asset_id)?;
@@ -134,7 +148,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			ensure!(
 				sender == Self::account_by_asset_id(&asset_id),
-				Error::<T>::AssetNotOwnedByAccount
+				<Error<T>>::AssetNotOwnedByAccount
 			);
 
 			<Self as UniqueAssets<T::AccountId>>::transfer(&dest_account, &asset_id)?;
@@ -175,42 +189,42 @@ pub mod pallet {
 			owner_account: &T::AccountId,
 			asset_info: Self::AssetInfo,
 		) -> Result<Self::AssetId, DispatchError> {
-			let asset_id = T::Hashing::hash(&asset_info.blake2_128_concat());
+			let asset_id = T::Hashing::hash_of(&asset_info);
 
-			ensure!(!AccountByAsset::<T>::contains_key(&asset_id), Error::<T>::AssetAlreadyExists);
+			ensure!(!AccountByAsset::<T>::contains_key(&asset_id), <Error<T>>::AssetAlreadyExists);
 
 			ensure!(
 				T::UserAssetLimit::get() > Self::total_by_account(owner_account),
-				Error::<T>::AssetForAccountLimitExcited
+				<Error<T>>::AssetForAccountLimitExcited
 			);
 
 			ensure!(T::AssetLimit::get() > Self::total(), Error::<T>::AssetLimitExcited);
 
 			let asset = (asset_id, asset_info) as Asset<T>;
 
-			Total::<T>::mutate(|t| *t += 1);
-			TotalByAccount::<T>::mutate(&owner_account, |t| *t += 1);
-			AssetsByAccount::<T>::append(&owner_account, asset);
-			AccountByAsset::<T>::insert(&asset_id, owner_account);
+			<Total<T>>::mutate(|t| *t += 1);
+			<TotalByAccount<T>>::mutate(&owner_account, |t| *t += 1);
+			<AssetsByAccount<T>>::append(&owner_account, asset);
+			<AccountByAsset<T>>::insert(&asset_id, owner_account);
 
 			Ok(asset_id)
 		}
 
 		fn burn(asset_id: &Self::AssetId) -> DispatchResult {
 			let owner_account = Self::owner_of(asset_id);
-			ensure!(owner_account != T::AccountId::default(), Error::<T>::AssetNotOwnedByAccount);
+			ensure!(owner_account != T::AccountId::default(), <Error<T>>::AssetNotOwnedByAccount);
 
-			Total::<T>::mutate(|t| *t -= 1);
-			Burned::<T>::mutate(|b| *b += 1);
-			TotalByAccount::<T>::mutate(&owner_account, |t| *t -= 1);
-			AssetsByAccount::<T>::mutate(&owner_account, |assets| {
+			<Total<T>>::mutate(|t| *t -= 1);
+			<Burned<T>>::mutate(|b| *b += 1);
+			<TotalByAccount<T>>::mutate(&owner_account, |t| *t -= 1);
+			<AssetsByAccount<T>>::mutate(&owner_account, |assets| {
 				assets.remove(
 					assets
 						.binary_search_by_key(asset_id, |(x, _)| *x)
 						.expect("record expected to be in vector"),
 				);
 			});
-			AccountByAsset::<T>::remove(asset_id);
+			<AccountByAsset<T>>::remove(asset_id);
 
 			Ok(())
 		}
@@ -218,15 +232,15 @@ pub mod pallet {
 		fn transfer(dest_account: &T::AccountId, asset_id: &Self::AssetId) -> DispatchResult {
 			let owner_account = Self::owner_of(asset_id);
 
-			ensure!(owner_account != T::AccountId::default(), Error::<T>::AssetNotOwnedByAccount);
+			ensure!(owner_account != T::AccountId::default(), <Error<T>>::AssetNotOwnedByAccount);
 
 			ensure!(
 				T::UserAssetLimit::get() > Self::total_by_account(dest_account),
-				Error::<T>::AssetForAccountLimitExcited
+				<Error<T>>::AssetForAccountLimitExcited
 			);
 
-			TotalByAccount::<T>::mutate(&owner_account, |t| *t -= 1);
-			TotalByAccount::<T>::mutate(dest_account, |t| *t += 1);
+			<TotalByAccount<T>>::mutate(&owner_account, |t| *t -= 1);
+			<TotalByAccount<T>>::mutate(dest_account, |t| *t += 1);
 
 			let asset = AssetsByAccount::<T>::mutate(&owner_account, |assets| {
 				assets.remove(
@@ -236,8 +250,8 @@ pub mod pallet {
 				)
 			});
 
-			AssetsByAccount::<T>::append(dest_account, asset);
-			AccountByAsset::<T>::insert(asset_id, dest_account);
+			<AssetsByAccount<T>>::append(dest_account, asset);
+			<AccountByAsset<T>>::insert(asset_id, dest_account);
 
 			Ok(())
 		}

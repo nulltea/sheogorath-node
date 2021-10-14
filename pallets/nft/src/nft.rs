@@ -1,12 +1,10 @@
 //! Source: https://github.com/danforbes/pallet-nft/blob/master/src/nft.rs
 
-use super::*;
-
 use frame_support::{
 	dispatch::{result::Result, DispatchError, DispatchResult},
 	traits::Get,
 };
-use sp_std::vec::Vec;
+use sp_std::{vec::Vec};
 
 /// An interface over a set of unique assets.
 /// Assets with equivalent attributes (as defined by the AssetInfo type) **must** have an equal ID
@@ -42,3 +40,4 @@ pub trait UniqueAssets<AccountId> {
 	/// Transfer ownership of an asset to another account.
 	fn transfer(dest_account: &AccountId, asset_id: &Self::AssetId) -> DispatchResult;
 }
+

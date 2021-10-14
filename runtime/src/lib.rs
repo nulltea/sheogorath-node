@@ -272,8 +272,6 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
-/// Configure the pallet-template in pallets/nft.
-///
 parameter_types! {
 	pub const MaxAssets: u128 = 2^64;
 	pub const MaxAssetsPerUser: u64 = 256;
@@ -281,9 +279,10 @@ parameter_types! {
 
 impl nft_pallet::Config for Runtime {
 	type AssetsCurator = frame_system::EnsureRoot<AccountId>;
-	type AssetMetadata = ();
+	type AssetMetadata = nft_pallet::AssetMetadata<Self>;
 	type AssetLimit = MaxAssets;
 	type UserAssetLimit = MaxAssetsPerUser;
+	type Currency = Balances;
 	type Event = Event;
 }
 
