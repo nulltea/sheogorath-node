@@ -53,6 +53,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		AssetAlreadyExists,
+		AssetNotOwnedByAccount,
 		AssetForAccountLimitExcited,
 		AssetLimitExcited,
 	}
@@ -65,20 +66,24 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn total)]
 	pub(super) type Total<T: Config> = StorageValue<_, u128, ValueQuery>;
+
 	/// The total number of this type of commodity that has been burned.
 	#[pallet::storage]
 	#[pallet::getter(fn burned)]
 	pub(super) type Burned<T: Config> = StorageValue<_, u128, ValueQuery>;
+
 	/// The total number of this type of commodity owned by an account.
 	#[pallet::storage]
 	#[pallet::getter(fn total_by_account)]
 	pub(super) type TotalByAccount<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, u64, ValueQuery>;
+
 	/// A mapping from an account to a list of all of the commodities of this type that are owned by it.
 	#[pallet::storage]
 	#[pallet::getter(fn assets_by_account)]
 	pub(super) type AssetsByAccount<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Asset<T>>, ValueQuery>;
+
 	/// A mapping from a commodity ID to the account that owns it.
 	#[pallet::storage]
 	#[pallet::getter(fn account_by_asset_id)]
@@ -104,6 +109,40 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(10_000)]
+		pub fn burn(origin: OriginFor<T>, asset_id: AssetId<T>) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(
+				sender == Self::account_by_asset_id(&asset_id),
+				Error::<T>::AssetNotOwnedByAccount
+			);
+
+			<Self as UniqueAssets<T::AccountId>>::burn(&asset_id)?;
+
+			Self::deposit_event(Event::Burned(asset_id));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn transfer(
+			origin: OriginFor<T>,
+			dest_account: T::AccountId,
+			asset_id: AssetId<T>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(
+				sender == Self::account_by_asset_id(&asset_id),
+				Error::<T>::AssetNotOwnedByAccount
+			);
+
+			<Self as UniqueAssets<T::AccountId>>::transfer(&dest_account, &asset_id)?;
+
+			Self::deposit_event(Event::Transferred(asset_id.clone(), dest_account.clone()));
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> UniqueAssets<T::AccountId> for Pallet<T> {
@@ -124,10 +163,8 @@ pub mod pallet {
 			Self::total_by_account(account)
 		}
 
-		fn assets_for_account(
-			account: &T::AccountId,
-		) -> Vec<(Self::AssetId, Self::AssetInfo)> {
-			Self::assets_for_account(account)
+		fn assets_for_account(account: &T::AccountId) -> Vec<(Self::AssetId, Self::AssetInfo)> {
+			Self::assets_by_account(account)
 		}
 
 		fn owner_of(asset_id: &Self::AssetId) -> T::AccountId {
@@ -160,14 +197,49 @@ pub mod pallet {
 		}
 
 		fn burn(asset_id: &Self::AssetId) -> DispatchResult {
-			todo!()
+			let owner_account = Self::owner_of(asset_id);
+			ensure!(owner_account != T::AccountId::default(), Error::<T>::AssetNotOwnedByAccount);
+
+			Total::<T>::mutate(|t| *t -= 1);
+			Burned::<T>::mutate(|b| *b += 1);
+			TotalByAccount::<T>::mutate(&owner_account, |t| *t -= 1);
+			AssetsByAccount::<T>::mutate(&owner_account, |assets| {
+				assets.remove(
+					assets
+						.binary_search_by_key(asset_id, |(x, _)| *x)
+						.expect("record expected to be in vector"),
+				);
+			});
+			AccountByAsset::<T>::remove(asset_id);
+
+			Ok(())
 		}
 
-		fn transfer(
-			dest_account: &T::AccountId,
-			asset_id: &Self::AssetId,
-		) -> DispatchResult {
-			todo!()
+		fn transfer(dest_account: &T::AccountId, asset_id: &Self::AssetId) -> DispatchResult {
+			let owner_account = Self::owner_of(asset_id);
+
+			ensure!(owner_account != T::AccountId::default(), Error::<T>::AssetNotOwnedByAccount);
+
+			ensure!(
+				T::UserAssetLimit::get() > Self::total_by_account(dest_account),
+				Error::<T>::AssetForAccountLimitExcited
+			);
+
+			TotalByAccount::<T>::mutate(&owner_account, |t| *t -= 1);
+			TotalByAccount::<T>::mutate(dest_account, |t| *t += 1);
+
+			let asset = AssetsByAccount::<T>::mutate(&owner_account, |assets| {
+				assets.remove(
+					assets
+						.binary_search_by_key(&asset_id, |(x, _)| x)
+						.expect("record expected to be in vector"),
+				)
+			});
+
+			AssetsByAccount::<T>::append(dest_account, asset);
+			AccountByAsset::<T>::insert(asset_id, dest_account);
+
+			Ok(())
 		}
 	}
 }
