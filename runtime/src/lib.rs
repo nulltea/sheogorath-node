@@ -40,8 +40,9 @@ use pallet_transaction_payment::CurrencyAdapter;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
-/// Import the template pallet.
-pub use nft_pallet;
+/// Import the custom pallets.
+pub use pallet_nft;
+pub use pallet_ipfs;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -271,18 +272,23 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+impl pallet_ipfs::Config for Runtime {
+	type Event = Event;
+}
+
 parameter_types! {
 	pub const MaxAssets: u128 = 2^64;
 	pub const MaxAssetsPerUser: u64 = 256;
 }
 
-impl nft_pallet::Config for Runtime {
+impl pallet_nft::Config for Runtime {
 	type AssetsCurator = frame_system::EnsureRoot<AccountId>;
-	type AssetMetadata = nft_pallet::AssetMetadata<Self>;
 	type AssetLimit = MaxAssets;
 	type UserAssetLimit = MaxAssetsPerUser;
 	type Currency = Balances;
 	type Event = Event;
+	type AssetMetadata = pallet_nft::AssetMetadata<Self>;
+	type FileSystem = pallet_ipfs::Pallet<Self>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -301,7 +307,8 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
-		NFT: nft_pallet::{Pallet, Call, Storage, Event<T>},
+		IPFS: pallet_ipfs::{Pallet, Call, Storage, Event<T>},
+		NFT: pallet_nft::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

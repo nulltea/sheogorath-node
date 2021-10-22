@@ -16,13 +16,6 @@ name = 'nft-platform'
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
-[[bin]]
-name = "node-template"
-
-[dependencies.nft-platform-runtime]
-path = '../runtime'
-version = '3.0.0-monthly-2021-10'
-
 [dependencies]
 ipfs = { git = "https://github.com/rs-ipfs/rust-ipfs"}
 structopt = "0.3.8"
@@ -60,7 +53,7 @@ pallet-transaction-payment-rpc = { version = "4.0.0-dev", path = "../../substrat
 frame-benchmarking = { version = "4.0.0-dev", path = "../../substrate-ipfs/frame/benchmarking" }
 frame-benchmarking-cli = { version = "4.0.0-dev", path = "../../substrate-ipfs/utils/frame/benchmarking-cli" }
 
-node-template-runtime = { version = "3.0.0", path = "../runtime" }
+nft-platform-runtime = { version = "3.0.0-monthly-2021-10", path = "../runtime" }
 
 [build-dependencies]
 substrate-build-script-utils = { version = "3.0.0", path = "../../substrate-ipfs/utils/build-script-utils" }
@@ -68,5 +61,5 @@ substrate-build-script-utils = { version = "3.0.0", path = "../../substrate-ipfs
 [features]
 default = []
 runtime-benchmarks = [
-	"node-template-runtime/runtime-benchmarks",
+	"nft-platform-runtime/runtime-benchmarks",
 ]
