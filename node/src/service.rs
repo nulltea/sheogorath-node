@@ -425,6 +425,16 @@ pub fn new_light(mut config: Configuration) -> Result<TaskManager, ServiceError>
 		})?;
 
 	if config.offchain_worker.enabled {
+		#[cfg(feature = "ocw")]
+		{
+			sp_keystore::SyncCryptoStore::sr25519_generate_new(
+				&*keystore,
+				runtime::ocw_demo::KEY_TYPE,
+				Some("//Alice"),
+			)
+			.expect("Creating key with account Alice should succeed.");
+		}
+
 		sc_service::build_offchain_workers(
 			&config,
 			task_manager.spawn_handle(),

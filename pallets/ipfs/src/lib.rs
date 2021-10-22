@@ -9,19 +9,73 @@ pub use crate::interface::IPFS;
 pub mod pallet {
 	use crate::interface::IPFS;
 	use codec::{Decode, Encode};
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
-	use log::{debug, info};
+	use frame_support::{pallet_prelude::*, sp_runtime::traits::Hash};
+	use frame_system::{
+		offchain::{
+			AppCrypto, CreateSignedTransaction, SendSignedTransaction, SendUnsignedTransaction,
+			SignedPayload, Signer, SigningTypes, SubmitTransaction,
+		},
+		pallet_prelude::*,
+	};
+	use log;
 	use scale_info::TypeInfo;
-	use sp_core::offchain::{Duration, IpfsRequest, IpfsResponse, OpaqueMultiaddr, Timestamp};
+	use sp_core::{
+		crypto::KeyTypeId,
+		offchain::{Duration, IpfsRequest, IpfsResponse, OpaqueMultiaddr, Timestamp},
+	};
 	use sp_io::offchain::timestamp;
 	use sp_runtime::offchain::ipfs;
 	use sp_std::{str, vec::Vec};
 
-	#[pallet::config]
-	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+	/// Defines application identifier for crypto keys of this module.
+	pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ipfs");
+
+	pub mod crypto {
+		use crate::KEY_TYPE;
+		use sp_core::ed25519::Signature as Ed25519Signature;
+
+		use sp_runtime::{
+			app_crypto::{app_crypto, ed25519},
+			traits::Verify,
+			MultiSignature, MultiSigner,
+		};
+		use sp_std::prelude::*;
+
+		app_crypto!(ed25519, KEY_TYPE);
+
+		pub struct AuthId;
+		// implemented for ocw-runtime
+		impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for AuthId {
+			type RuntimeAppPublic = Public;
+			type GenericPublic = sp_core::ed25519::Public;
+			type GenericSignature = sp_core::ed25519::Signature;
+		}
 	}
+
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	pub struct Payload<Public> {
+		number: u64,
+		public: Public,
+	}
+
+	impl<T: SigningTypes> SignedPayload<T> for Payload<T::Public> {
+		fn public(&self) -> T::Public {
+			self.public.clone()
+		}
+	}
+
+	#[pallet::config]
+	pub trait Config: frame_system::Config + CreateSignedTransaction<Call<Self>> {
+		/// The overarching event type.
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// The overarching dispatch call type.
+		type Call: From<Call<Self>>;
+		/// The identifier type for an offchain worker.
+		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+	}
+
+	/// Defines file ID based on content hash.
+	pub type FileId<T> = <T as frame_system::Config>::Hash;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -35,6 +89,8 @@ pub mod pallet {
 		QueuedDataToUnpin(T::AccountId),
 		FindPeerIssued(T::AccountId),
 		FindProvidersIssued(T::AccountId),
+		DataAdded(FileId<T>, Vec<u8>),
+		DataRetrieved(FileId<T>, Vec<u8>),
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -46,8 +102,8 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
-	pub enum DataCommand {
-		AddBytes(Vec<u8>),
+	pub enum DataCommand<T: Config> {
+		AddBytes((FileId<T>, Vec<u8>)),
 		CatBytes(Vec<u8>),
 		InsertPin(Vec<u8>),
 		RemoveBlock(Vec<u8>),
@@ -66,6 +122,7 @@ pub mod pallet {
 		RequestCreateFailed,
 		RequestTimeout,
 		RequestFailed,
+		OffchainAddBytesFailed,
 	}
 
 	#[pallet::pallet]
@@ -79,14 +136,59 @@ pub mod pallet {
 
 	#[pallet::storage]
 	// A queue of data to publish or obtain on IPFS.
-	pub(super) type DataQueue<T: Config> = StorageValue<_, Vec<DataCommand>, ValueQuery>;
+	pub(super) type DataQueue<T: Config> = StorageValue<_, Vec<DataCommand<T>>, ValueQuery>;
 
 	#[pallet::storage]
 	// A list of requests to the DHT.
 	pub(super) type DhtQueue<T: Config> = StorageValue<_, Vec<DhtCommand>, ValueQuery>;
 
+	#[pallet::storage]
+	// Offchain job results associated with file hash.
+	pub(super) type OutboundValues<T: Config> =
+		StorageMap<_, Blake2_128Concat, FileId<T>, Vec<u8>, ValueQuery>;
+
 	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(block_number: T::BlockNumber) -> Weight {
+			<ConnectionQueue<T>>::kill();
+			<DhtQueue<T>>::kill();
+
+			if block_number % 2u32.into() == 1u32.into() {
+				<DhtQueue<T>>::kill();
+			}
+
+			0
+		}
+
+		fn offchain_worker(block_number: T::BlockNumber) {
+			// process connect/disconnect commands
+			if let Err(e) = Self::connection_housekeeping() {
+				log::debug!("IPFS: Encountered an error during connection housekeeping: {:?}", e);
+			}
+
+			// process requests to the DHT
+			if let Err(e) = Self::handle_dht_requests() {
+				log::debug!("IPFS: Encountered an error while processing DHT requests: {:?}", e);
+			}
+
+			// process Ipfs::{add, get} queues every other block
+			if (block_number % 2u32.into()) == 1u32.into() {
+				if let Err(e) = Self::handle_data_requests() {
+					log::debug!(
+						"IPFS: Encountered an error while processing data requests: {:?}",
+						e
+					);
+				}
+			}
+
+			// display some stats every 5 blocks
+			if (block_number % 5u32.into()) == 0u32.into() {
+				if let Err(e) = Self::print_metadata() {
+					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
+				}
+			}
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -141,6 +243,21 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(10_000)]
+		pub fn submit_outbound_values(
+			origin: OriginFor<T>,
+			file_id: FileId<T>,
+			values: Vec<u8>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			<OutboundValues<T>>::insert(file_id, values.clone());
+
+			Self::deposit_event(Event::DataAdded(file_id, values));
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> IPFS for Pallet<T> {
@@ -169,13 +286,14 @@ pub mod pallet {
 		}
 
 		fn add_bytes(data: Vec<u8>) -> DispatchResult {
-			DataQueue::<T>::append(DataCommand::AddBytes(data));
+			let file_id = T::Hashing::hash(&data);
+			DataQueue::<T>::append(DataCommand::<T>::AddBytes((file_id, data)));
 
 			Ok(())
 		}
 
 		fn cat_bytes(cid: Vec<u8>) -> DispatchResult {
-			DataQueue::<T>::append(DataCommand::CatBytes(cid));
+			DataQueue::<T>::append(DataCommand::<T>::CatBytes(cid));
 
 			Ok(())
 		}
@@ -306,6 +424,7 @@ pub mod pallet {
 		}
 
 		fn handle_data_requests() -> Result<(), Error<T>> {
+			let signer = Signer::<T, T::AuthorityId>::any_account();
 			let data_queue = DataQueue::<T>::get();
 			let len = data_queue.len();
 			if len != 0 {
@@ -319,7 +438,7 @@ pub mod pallet {
 			let deadline = Some(timestamp().add(Duration::from_millis(1_000)));
 			for cmd in data_queue.into_iter() {
 				match cmd {
-					DataCommand::AddBytes(data) => {
+					DataCommand::<T>::AddBytes((file_id, data)) => {
 						match Self::ipfs_request(IpfsRequest::AddBytes(data.clone()), deadline) {
 							Ok(IpfsResponse::AddBytes(cid)) => {
 								log::info!(
@@ -327,6 +446,17 @@ pub mod pallet {
 									str::from_utf8(&cid)
 										.expect("our own IPFS node can be trusted here; qed")
 								);
+
+								if let Some((acc, res)) = signer.send_signed_transaction(|_acct| {
+									Call::submit_outbound_values { file_id, values: cid.clone() }
+								}) {
+									if res.is_err() {
+										log::error!("failed send results: {:?}", acc.id);
+										return Err(<Error<T>>::OffchainAddBytesFailed);
+									}
+
+									return Ok(());
+								}
 							}
 							Ok(_) => unreachable!(
 								"only AddBytes can be a response for that request type; qed"
@@ -334,7 +464,7 @@ pub mod pallet {
 							Err(e) => log::debug!("IPFS: add error: {:?}", e),
 						}
 					}
-					DataCommand::CatBytes(data) => {
+					DataCommand::<T>::CatBytes(data) => {
 						match Self::ipfs_request(IpfsRequest::CatBytes(data.clone()), deadline) {
 							Ok(IpfsResponse::CatBytes(data)) => {
 								if let Ok(str) = str::from_utf8(&data) {
@@ -349,7 +479,7 @@ pub mod pallet {
 							Err(e) => log::debug!("IPFS: error: {:?}", e),
 						}
 					}
-					DataCommand::RemoveBlock(cid) => {
+					DataCommand::<T>::RemoveBlock(cid) => {
 						match Self::ipfs_request(IpfsRequest::RemoveBlock(cid), deadline) {
 							Ok(IpfsResponse::RemoveBlock(cid)) => {
 								log::info!(
@@ -364,7 +494,7 @@ pub mod pallet {
 							Err(e) => log::debug!("IPFS: remove block error: {:?}", e),
 						}
 					}
-					DataCommand::InsertPin(cid) => {
+					DataCommand::<T>::InsertPin(cid) => {
 						match Self::ipfs_request(
 							IpfsRequest::InsertPin(cid.clone(), false),
 							deadline,
@@ -382,7 +512,7 @@ pub mod pallet {
 							Err(e) => log::debug!("IPFS: insert pin error: {:?}", e),
 						}
 					}
-					DataCommand::RemovePin(cid) => {
+					DataCommand::<T>::RemovePin(cid) => {
 						match Self::ipfs_request(
 							IpfsRequest::RemovePin(cid.clone(), false),
 							deadline,
@@ -425,35 +555,6 @@ pub mod pallet {
 			);
 
 			Ok(())
-		}
-
-		pub fn offchain_worker(block_number: T::BlockNumber) {
-			// process connect/disconnect commands
-			if let Err(e) = Self::connection_housekeeping() {
-				log::debug!("IPFS: Encountered an error during connection housekeeping: {:?}", e);
-			}
-
-			// process requests to the DHT
-			if let Err(e) = Self::handle_dht_requests() {
-				log::debug!("IPFS: Encountered an error while processing DHT requests: {:?}", e);
-			}
-
-			// process Ipfs::{add, get} queues every other block
-			if (block_number % 2u32.into()) == 1u32.into() {
-				if let Err(e) = Self::handle_data_requests() {
-					log::debug!(
-						"IPFS: Encountered an error while processing data requests: {:?}",
-						e
-					);
-				}
-			}
-
-			// display some stats every 5 blocks
-			if (block_number % 5u32.into()) == 0u32.into() {
-				if let Err(e) = Self::print_metadata() {
-					log::debug!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
-				}
-			}
 		}
 	}
 }

@@ -39,7 +39,7 @@ pub mod pallet {
 		type FileSystem: IPFS;
 	}
 
-	/// The runtime system's hashing algorithm is used to uniquely identify commodities.
+	/// AssetId being its hash.
 	pub type AssetId<T> = <T as frame_system::Config>::Hash;
 
 	/// Associates a commodity with its ID.
