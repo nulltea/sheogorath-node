@@ -2,11 +2,11 @@
 
 pub use pallet::*;
 
-mod nft;
+mod interface;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use crate::nft::UniqueAssets;
+	use crate::interface::UniqueAssets;
 
 	use codec::FullCodec;
 	use frame_support::{
@@ -19,6 +19,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_std::{fmt::Debug, str, vec::Vec, collections::btree_map::BTreeMap};
+	use pallet_ipfs::IPFS;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -34,9 +35,11 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The Currency handler for the Kitties pallet.
 		type Currency: Currency<Self::AccountId>;
+		/// IPFS client for persisting content data.
+		type FileSystem: IPFS;
 	}
 
-	/// The runtime system's hashing algorithm is used to uniquely identify commodities.
+	/// AssetId being its hash.
 	pub type AssetId<T> = <T as frame_system::Config>::Hash;
 
 	/// Associates a commodity with its ID.
@@ -157,6 +160,13 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		// #[pallet::weight(10_000)]
+		// pub fn mint(origin: OriginFor<T>, data: Vec<u8>) -> DispatchResult {
+		// 	let sender = ensure_signed(origin)?;
+		//
+		// 	Ok(())
+		// }
 	}
 
 	impl<T: Config> UniqueAssets<T::AccountId> for Pallet<T> {

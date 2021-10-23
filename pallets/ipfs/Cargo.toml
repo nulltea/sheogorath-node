@@ -1,5 +1,5 @@
 [package]
-name = 'pallet-nft'
+name = 'pallet-ipfs'
 version = '0.0.1'
 description = 'FRAME pallet template for defining custom runtime logic.'
 authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
@@ -21,7 +21,10 @@ frame-support = { default-features = false, version = "4.0.0-dev", path = "../..
 frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/frame/system" }
 frame-benchmarking = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/frame/benchmarking", optional = true }
 sp-std = { version = "4.0.0-dev", default-features = false, path = "../../../substrate-ipfs/primitives/std" }
-pallet-ipfs = { version = "0.0.1", default-features = false, path = "../ipfs" }
+sp-core = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/primitives/core" }
+sp-io = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/primitives/io" }
+sp-runtime = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/primitives/runtime" }
+log = "0.4.14"
 
 [dev-dependencies]
 frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../substrate-ipfs/frame/system" }
@@ -41,7 +44,6 @@ std = [
 	'frame-system/std',
 	'sp-io/std',
 	'sp-std/std',
-	"pallet-ipfs/std"
 ]
 
 runtime-benchmarks = ["frame-benchmarking"]
