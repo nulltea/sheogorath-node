@@ -7,6 +7,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::Encode;
+use log;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
@@ -285,13 +286,14 @@ where
 	Call: From<LocalCall>,
 {
 	fn create_transaction<C: AppCrypto<Self::Public, Self::Signature>>(
-		call: Self::OverarchingCall,
-		public: Self::Public,
-		account: Self::AccountId,
-		nonce: Self::Index,
+		call: Call,
+		public: <Signature as sp_runtime::traits::Verify>::Signer,
+		account: AccountId,
+		nonce: Index,
 	) -> Option<(Call, <UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload)> {
 		let period = BlockHashCount::get() as u64;
 		let current_block = System::block_number().saturated_into::<u64>().saturating_sub(1);
+
 		let tip = 0;
 		let extra: SignedExtra = (
 			frame_system::CheckSpecVersion::<Runtime>::new(),
@@ -303,15 +305,13 @@ where
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 
-		#[cfg_attr(not(feature = "std"), allow(unused_variables))]
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
-				// debug::native::warn!("SignedPayload error: {:?}", e);
+				log::error!("Unable to create signed payload: {:?}", e);
 			})
 			.ok()?;
 
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
-
 		let address = account;
 		let (call, extra, _) = raw_payload.deconstruct();
 		Some((call, (sp_runtime::MultiAddress::Id(address), signature.into(), extra)))

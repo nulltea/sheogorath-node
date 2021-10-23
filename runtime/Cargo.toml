@@ -13,6 +13,7 @@ repository = 'https://github.com/timoth-y/substrate-nft'
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+log = "0.4.14"
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
@@ -27,10 +28,10 @@ pallet-timestamp = { version = "4.0.0-dev", default-features = false, path = "..
 pallet-transaction-payment = { version = "4.0.0-dev", default-features = false, path = "../../substrate-ipfs/frame/transaction-payment" }
 frame-executive = { version = "4.0.0-dev", default-features = false, path = "../../substrate-ipfs/frame/executive" }
 sp-api = { version = "4.0.0-dev", default-features = false, path = "../../substrate-ipfs/primitives/api" }
-sp-block-builder = { path = "../../substrate-ipfs/primitives/block-builder", default-features = false, version = "4.0.0-dev"}
+sp-block-builder = { path = "../../substrate-ipfs/primitives/block-builder", default-features = false, version = "4.0.0-dev" }
 sp-consensus-aura = { version = "0.10.0-dev", default-features = false, path = "../../substrate-ipfs/primitives/consensus/aura" }
 sp-core = { version = "4.0.0-dev", default-features = false, path = "../../substrate-ipfs/primitives/core" }
-sp-inherents = { path = "../../substrate-ipfs/primitives/inherents", default-features = false, version = "4.0.0-dev"}
+sp-inherents = { path = "../../substrate-ipfs/primitives/inherents", default-features = false, version = "4.0.0-dev" }
 sp-offchain = { version = "4.0.0-dev", default-features = false, path = "../../substrate-ipfs/primitives/offchain" }
 sp-runtime = { version = "4.0.0-dev", default-features = false, path = "../../substrate-ipfs/primitives/runtime" }
 sp-session = { version = "4.0.0-dev", default-features = false, path = "../../substrate-ipfs/primitives/session" }

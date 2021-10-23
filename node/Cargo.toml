@@ -42,6 +42,7 @@ sp-timestamp = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/
 jsonrpc-core = "18.0.0"
 sc-rpc = { version = "4.0.0-dev", path = "../../substrate-ipfs/client/rpc" }
 sp-api = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/api" }
+sp-keystore = { version = "0.10.0-dev", path = "../../substrate-ipfs/primitives/keystore" }
 sc-rpc-api = { version = "0.10.0-dev", path = "../../substrate-ipfs/client/rpc-api" }
 sp-blockchain = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/blockchain" }
 sp-block-builder = { version = "4.0.0-dev", path = "../../substrate-ipfs/primitives/block-builder" }

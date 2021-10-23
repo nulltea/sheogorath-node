@@ -32,23 +32,23 @@ pub mod pallet {
 
 	pub mod crypto {
 		use crate::KEY_TYPE;
-		use sp_core::ed25519::Signature as Ed25519Signature;
+		use sp_core::sr25519::Signature as Sr25519Signature;
 
 		use sp_runtime::{
-			app_crypto::{app_crypto, ed25519},
+			app_crypto::{app_crypto, sr25519},
 			traits::Verify,
 			MultiSignature, MultiSigner,
 		};
 		use sp_std::prelude::*;
 
-		app_crypto!(ed25519, KEY_TYPE);
+		app_crypto!(sr25519, KEY_TYPE);
 
 		pub struct AuthId;
 		// implemented for ocw-runtime
 		impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for AuthId {
 			type RuntimeAppPublic = Public;
-			type GenericPublic = sp_core::ed25519::Public;
-			type GenericSignature = sp_core::ed25519::Signature;
+			type GenericPublic = sp_core::sr25519::Public;
+			type GenericSignature = sp_core::sr25519::Signature;
 		}
 	}
 
@@ -123,6 +123,7 @@ pub mod pallet {
 		RequestTimeout,
 		RequestFailed,
 		OffchainAddBytesFailed,
+		NoLocalAcctForSigning,
 	}
 
 	#[pallet::pallet]
@@ -154,7 +155,7 @@ pub mod pallet {
 			<DhtQueue<T>>::kill();
 
 			if block_number % 2u32.into() == 1u32.into() {
-				<DhtQueue<T>>::kill();
+				<DataQueue<T>>::kill();
 			}
 
 			0
@@ -250,10 +251,9 @@ pub mod pallet {
 			file_id: FileId<T>,
 			values: Vec<u8>,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 
 			<OutboundValues<T>>::insert(file_id, values.clone());
-
 			Self::deposit_event(Event::DataAdded(file_id, values));
 
 			Ok(())
@@ -442,21 +442,24 @@ pub mod pallet {
 						match Self::ipfs_request(IpfsRequest::AddBytes(data.clone()), deadline) {
 							Ok(IpfsResponse::AddBytes(cid)) => {
 								log::info!(
-									"IPFS: added data with Cid {}",
+									"IPFS: added data ({:?}) with Cid {}",
+									file_id,
 									str::from_utf8(&cid)
 										.expect("our own IPFS node can be trusted here; qed")
 								);
 
-								if let Some((acc, res)) = signer.send_signed_transaction(|_acct| {
+								let result = signer.send_signed_transaction(|_acct| {
 									Call::submit_outbound_values { file_id, values: cid.clone() }
-								}) {
+								});
+
+								if let Some((acc, res)) = result {
 									if res.is_err() {
 										log::error!("failed send results: {:?}", acc.id);
-										return Err(<Error<T>>::OffchainAddBytesFailed);
 									}
-
-									return Ok(());
 								}
+
+								// The case of `None`: no account is available for sending
+								log::error!("no account is available for sending transaction");
 							}
 							Ok(_) => unreachable!(
 								"only AddBytes can be a response for that request type; qed"
