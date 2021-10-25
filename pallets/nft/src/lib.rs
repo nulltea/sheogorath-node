@@ -52,7 +52,7 @@ pub mod pallet {
 	pub struct AssetMetadata<T: Config> {
 		pub name: Vec<u8>,
 		pub content_uri: Vec<u8>,
-		pub properties: BTreeMap<Vec<u8>, Vec<u8>>,
+		pub properties: Option<BTreeMap<Vec<u8>, Vec<u8>>>,
 		pub initial_price: Option<BalanceOf<T>>,
 	}
 
@@ -118,7 +118,8 @@ pub mod pallet {
 			owner_account: T::AccountId,
 			metadata: T::AssetMetadata,
 		) -> DispatchResult {
-			T::AssetsCurator::ensure_origin(origin)?;
+			//T::AssetsCurator::ensure_origin(origin)?;
+			ensure_signed(origin)?;
 
 			let id = <Self as UniqueAssets<T::AccountId>>::mint(&owner_account, metadata)?;
 

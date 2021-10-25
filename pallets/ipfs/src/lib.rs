@@ -456,10 +456,10 @@ pub mod pallet {
 									if res.is_err() {
 										log::error!("failed send results: {:?}", acc.id);
 									}
+								} else {
+									// The case of `None`: no account is available for sending
+									log::error!("no account is available for sending transaction");
 								}
-
-								// The case of `None`: no account is available for sending
-								log::error!("no account is available for sending transaction");
 							}
 							Ok(_) => unreachable!(
 								"only AddBytes can be a response for that request type; qed"

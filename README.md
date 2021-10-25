@@ -1,3 +1,3 @@
-# Substrate NFT
+# Substrate NFT platform
 
 > WIP
